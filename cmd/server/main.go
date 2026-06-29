@@ -7,6 +7,7 @@ import (
 	"os/signal"
 
 	"github.com/314159otr/Peril/internal/routing"
+	"github.com/314159otr/Peril/internal/gamelogic"
 	"github.com/314159otr/Peril/internal/pubsub"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -27,9 +28,29 @@ func main() {
 	}
 	defer channel.Close()
 
-	pubsub.PublishJSON(channel, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{
-		IsPaused: true,
-	})
+	gamelogic.PrintServerHelp()
+	for {
+		words := gamelogic.GetInput()
+		if len(words) == 0 {
+			continue
+		}
+		if words[0] == "pause" {
+			log.Println("sending a pause message...")
+			pubsub.PublishJSON(channel, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{
+				IsPaused: true,
+			})
+		} else if words[0] == "resume" {
+			log.Println("sending a resume message...")
+			pubsub.PublishJSON(channel, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{
+				IsPaused: false,
+			})
+		} else if words[0] == "quit" {
+			log.Println("exiting...")
+			break
+		} else {
+			log.Printf("didnt understand the command: %s", words[0])
+		}
+	}
 
 	c := make(chan os.Signal)
     signal.Notify(c, os.Interrupt)
